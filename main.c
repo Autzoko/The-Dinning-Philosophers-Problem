@@ -1,14 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
 
-typedef struct philosopher
-{
-    char name;
-    int chop_num;
-    int status; //1 for thinking, 0 for eating, -1 for waiting to eat, 2 for desire for eating
-    CS _x;
-    CS _y;
-}PLS;
+#define NUM_THREADS 5
+#define TIME_THINK 1000
+#define TIME_EAT 1000
 
 typedef struct chopstick
 {
@@ -19,49 +16,61 @@ typedef struct chopstick
     // ab-1, bc-2, cd-3, de-4, ea-5
 }CS;
 
+typedef struct philosopher
+{
+    char name;
+    int chop_num;
+    int status; //1 for thinking, 0 for eating, -1 for waiting to eat, 2 for desire for eating
+    CS _x;
+    CS _y;
+}PLS;
+
+void set();
+int think(PLS person);
+int pick_chop(PLS person);
+int release_chop(PLS person);
+int eat(PLS person);
+int wait_to_eat(PLS person);
+void *live(void *p);
+
 CS _A, _B, _C, _D, _E;
-PLS a, b, c, d, e;
+PLS ph[5];
 
 void set()
 {
-    a.name = 'a';
-    b.name = 'b';
-    c.name = 'c';
-    d.name = 'd';
-    e.name = 'e';
+    ph[0].name = 'a';
+    ph[1].name = 'b';
+    ph[2].name = 'c';
+    ph[3].name = 'd';
+    ph[4].name = 'e';
 
-    a._x = _A;
-    a._y = _E;
+    ph[0]._x = _A;
+    ph[0]._y = _E;
 
-    b._x = _A;
-    b._y = _B;
+    ph[1]._x = _A;
+    ph[1]._y = _B;
 
-    c._x = _B;
-    c._y = _C;
+    ph[2]._x = _B;
+    ph[2]._y = _C;
 
-    d._x = _C;
-    d._y = _D;
+    ph[3]._x = _C;
+    ph[3]._y = _D;
 
-    e._x = _D;
-    e._y = _E;
+    ph[4]._x = _D;
+    ph[4]._y = _E;
 
     _A.symbol = '1';
     _B.symbol = '2';
     _C.symbol = '3';
     _D.symbol = '4';
     _E.symbol = '5';
-
-    return;
 }
-
-static int all_chop = 5;
-int count;
 
 int think(PLS person)
 {
     person.status = 1;
     printf("%c is thinking...\n", person.name);
-    wait(10000);
+    sleep(TIME_THINK);
     person.status = 2;
     return person.status;
 }
@@ -73,12 +82,14 @@ int pick_chop(PLS person)
         person.chop_num++;
         person._x.is_available == 1;
         person._x.user = person.name;
+        printf("%c pick chopstick %d\n", person.name, person._x.symbol);
     }
     if(person._y.is_available == 0)
     {
         person.chop_num++;
         person._y.is_available = 1;
         person._y.user = person.name;
+        printf("%c pick chopstick %d\n", person.name, person._y.symbol);
     }
     return 0;
 }
@@ -99,7 +110,7 @@ int eat(PLS person)
         {
             person.status = 0;
             printf("%c is eating...\n", person.name);
-            wait(10000);
+            sleep(TIME_EAT);
             release_chop(person);
             printf("%c finished!\n", person.name);
             person.status = 1;
@@ -110,6 +121,7 @@ int eat(PLS person)
             wait_to_eat(person);
         }
     }
+    return 0;
 }
 
 int wait_to_eat(PLS person)
@@ -155,6 +167,46 @@ int wait_to_eat(PLS person)
         {
             person.status = -1;
             printf("%c is waiting to eat...\n", person.name);
+            while(1)
+            {
+                while(person._x.is_available != 0 && person._y.is_available != 0);
+                if(person._x.is_available == 0 && person._y.is_available == 0)
+                    break;
+            }
+            person._x.user = person.name;
+            person._y.user = person.name;
+            person.chop_num = 2;
+            person.status = 2;
+            eat(person);
         }
+        return person.status;
     }
+    else
+    {
+        return person.status;
+    }
+}
+
+void *live(void *p)
+{
+    PLS *person = (PLS*)p;
+    while(1)
+    {
+        think(*person);
+        eat(*person);
+    }
+}
+
+int main()
+{
+    set();
+    pthread_t p[NUM_THREADS];
+    int ret;
+    for(int i = 0; i < NUM_THREADS; i++)
+    {
+        printf("Creating thread %d\n", i);
+        pthread_create(&p[i], NULL, live, (void*)&ph[i]);
+    }
+    pthread_exit(NULL);
+    return 0;
 }
