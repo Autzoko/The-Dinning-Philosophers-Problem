@@ -4,8 +4,6 @@
 #include <unistd.h>
 
 #define NUM_THREADS 5
-#define TIME_THINK 1000
-#define TIME_EAT 1000
 
 typedef struct chopstick
 {
@@ -21,6 +19,8 @@ typedef struct philosopher
     char name;
     int chop_num;
     int status; //1 for thinking, 0 for eating, -1 for waiting to eat, 2 for desire for eating
+    int think_time;
+    int eat_time;
     CS _x;
     CS _y;
 }PLS;
@@ -59,18 +59,39 @@ void set()
     ph[4]._x = _D;
     ph[4]._y = _E;
 
+    ph[0].think_time = 5;
+    ph[0].eat_time = 5;
+
+    ph[1].think_time = 7;
+    ph[1].eat_time = 3;
+
+    ph[2].think_time = 4;
+    ph[2].eat_time = 6;
+
+    ph[3].think_time = 0;
+    ph[3].eat_time = 10;
+
+    ph[4].think_time = 3;
+    ph[4].eat_time = 7;
+
     _A.symbol = '1';
     _B.symbol = '2';
     _C.symbol = '3';
     _D.symbol = '4';
     _E.symbol = '5';
+
+    _A.is_available = 0;
+    _B.is_available = 0;
+    _C.is_available = 0;
+    _D.is_available = 0;
+    _E.is_available = 0;
 }
 
 int think(PLS person)
 {
     person.status = 1;
     printf("%c is thinking...\n", person.name);
-    sleep(TIME_THINK);
+    sleep(person.think_time);
     person.status = 2;
     return person.status;
 }
@@ -110,7 +131,7 @@ int eat(PLS person)
         {
             person.status = 0;
             printf("%c is eating...\n", person.name);
-            sleep(TIME_EAT);
+            sleep(person.eat_time);
             release_chop(person);
             printf("%c finished!\n", person.name);
             person.status = 1;
@@ -193,6 +214,7 @@ void *live(void *p)
     while(1)
     {
         think(*person);
+        pick_chop(*person);
         eat(*person);
     }
 }
